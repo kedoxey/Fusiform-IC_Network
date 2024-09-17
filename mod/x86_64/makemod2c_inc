@@ -1,0 +1,9 @@
+
+./vecevent.c: .././vecevent.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\n"
+	(cd "../."; MODLUNIT=$(NRNUNITS) $(NOCMODL) vecevent.mod -o "/Users/katedoxey/Desktop/research/projects/tinnitus model/code/mod/x86_64")
+
+./vecevent.o: ./vecevent.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\n"
+	$(COMPILE) -I"../." $(INCLUDES) -fPIC -c $< -o $@
+
