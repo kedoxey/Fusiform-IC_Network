@@ -68,83 +68,23 @@ connections = [('SGN', 'Fusi1'), ('SGN', 'Fusi2'),
                ('Fusi1', 'IC'), ('IC', 'Fusi1'), ('Fusi2', 'IC'), ('IC', 'Fusi2'),
                ('IC', 'Int'), ('Int', 'Fusi1'), ('Int', 'Fusi2')]
 
+for pre, post in connections:
+    temp = 5
+    synMech = 'inh' if 'Int' in pre else 'exc'
+
+    netParams.connParams[f'{pre}->{post}'] = {
+        'preConds': {'pop': f'{pre}_pop'},
+        'postConds': {'pop': f'{post}_pop'},
+        'synsPerConn': 1,
+        'synMech': synMech,
+        'weight': 1
+    }
+
 netParams.connParams[f'input->SGN'] = {
     'preConds': {'pop': 'input'},
     'postConds': {'pop': 'SGN_pop'},
     'synsPerConn': 1,
     'synMech': 'exc',
-    'weight': 1
-}
-
-netParams.connParams[f'SGN->Fusi1'] = {
-    'preConds': {'pop': 'SGN_pop'},
-    'postConds': {'pop': 'Fusi1_pop'},
-    'probability': 1,
-    'synsPerConn': 1,
-    'synMech': 'exc',
-    'weight': 1
-}
-
-netParams.connParams[f'SGN->Fusi2'] = {
-    'preConds': {'pop': 'SGN_pop'},
-    'postConds': {'pop': 'Fusi2_pop'},
-    'synsPerConn': 1,
-    'synMech': 'exc',
-    'weight': 1
-}
-
-netParams.connParams[f'Fusi1->IC'] = {
-    'preConds': {'pop': 'Fusi1_pop'},
-    'postConds': {'pop': 'IC_pop'},
-    'synsPerConn': 1,
-    'synMech': 'exc',
-    'weight': 1
-}
-
-netParams.connParams[f'IC->Fusi1'] = {
-    'preConds': {'pop': 'IC_pop'},
-    'postConds': {'pop': 'Fusi1_pop'},
-    'synsPerConn': 1,
-    'synMech': 'exc',
-    'weight': 1
-}
-
-netParams.connParams[f'Fusi2->IC'] = {
-    'preConds': {'pop': 'Fusi2_pop'},
-    'postConds': {'pop': 'IC_pop'},
-    'synsPerConn': 1,
-    'synMech': 'exc',
-    'weight': 1
-}
-
-netParams.connParams[f'IC->Fusi2'] = {
-    'preConds': {'pop': 'IC_pop'},
-    'postConds': {'pop': 'Fusi2_pop'},
-    'synsPerConn': 1,
-    'synMech': 'exc',
-    'weight': 1
-}
-
-netParams.connParams[f'IC->Int'] = {
-    'preConds': {'pop': 'IC_pop'},
-    'postConds': {'pop': 'Int_pop'},
-    'synsPerConn': 1,
-    'synMech': 'exc',
-    'weight': 1
-}
-
-netParams.connParams[f'Int->Fusi2'] = {
-    'preConds': {'pop': 'Int_pop'},
-    'postConds': {'pop': 'Fusi2_pop'},
-    'synsPerConn': 1,
-    'synMech': 'inh',
-    'weight': 1
-}
-netParams.connParams[f'Int->Fusi1'] = {
-    'preConds': {'pop': 'Int_pop'},
-    'postConds': {'pop': 'Fusi1_pop'},
-    'synsPerConn': 1,
-    'synMech': 'inh',
     'weight': 1
 }
 
@@ -179,4 +119,23 @@ axs.set_xlabel('Time (ms)')
 fig.tight_layout()
 fig.savefig(os.path.join(cwd, 'output', 'spike_times.png'), dpi=300)
 
+### Plot voltage traces ###
+fig, axs = plt.subplots(5, 1, figsize=(8,13))
+axs.ravel()
 
+t = simData['t']
+
+for cell_id, v_soma in simData['V_soma'].items():
+    if 'dict' not in cell_id:
+        gid = int(cell_id.split('_')[1])
+        cell_pop = cells[gid].tags['pop']
+        axs[gid].plot(t, v_soma, label=cell_pop, color=colors[cell_pop])
+        axs[gid].set_title(f'{cell_pop}')
+    axs[gid].set_ylim([-75,45])
+    axs[gid].set_yticks([-60, -30, 0, 30])
+    axs[gid].set_ylabel('Voltage (mV)')
+
+axs[-1].set_xlabel('Time (ms)')
+
+fig.tight_layout()
+fig.savefig(os.path.join(cwd, 'output', 'voltage_traces.png'), dpi=300)
