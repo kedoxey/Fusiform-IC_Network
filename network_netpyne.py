@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import os
 import numpy as np
+import model_helpers as mh
 from neuron import h, load_mechanisms
 from netpyne import specs, sim, cell, support
 
@@ -10,18 +11,28 @@ cwd = os.getcwd()
 mod_dir = os.path.join(cwd, 'mod')
 load_mechanisms(mod_dir)
 
-### Simulation configuration ###
+# current = 0.008
+# inh_gmaxs = [0.001, 0.002]  #  np.arange(0.005, 0.4, 0.001)
+
+# for inh_gmax in inh_gmaxs:
+#     inh_gmax = round(inh_gmax,3)
+    ### Simulation configuration ###
+sim_label = f'19_all_cells'
+sim_dir = mh.get_output_dir(sim_label)
+
 sim_dur = 500
 
 cfg = specs.SimConfig()					                    # object of class SimConfig to store simulation configuration
 cfg.duration = sim_dur 						                # Duration of the simulation, in ms
-cfg.dt = 0.025								                # Internal integration timestep to use
+cfg.dt = 0.05								                # Internal integration timestep to use
 cfg.verbose = True							                # Show detailed messages
 cfg.recordTraces = {'V_soma': {'sec': 'soma', 'loc': 0.5, 'var': 'v'}}
 cfg.recordStep = 0.1
-cfg.filename = os.path.join(cwd, 'output', 'tinnitus_small-net') 	# Set file output name
+# cfg.recordStim = True
+cfg.filename = os.path.join(sim_dir, f'{sim_label}-tinnitus_small-net') 	# Set file output name
 cfg.savePickle = True
-cfg.analysis['plotTraces'] = {'include': ['all'], 'saveFig': True}  # Plot recorded traces for this list of cells
+cfg.analysis['plotTraces'] = {'include': ['all'], 'saveFig': False, 'showFig': False}  # Plot recorded traces for this list of cells
+# cfg.analysis['plotSpikeFreq'] = {'include': ['all'], 'saveFig': True, 'showFig': True}
 cfg.hParams['celsius'] = 34.0 
 cfg.hParams['v_init'] = -60
 
@@ -30,7 +41,7 @@ netParams = specs.NetParams()
 
 IzhCell = {'secs': {}}
 IzhCell['secs']['soma'] = {'geom': {}, 'pointps': {}}                        # soma params dict
-IzhCell['secs']['soma']['geom'] = {'diam': 10.0, 'L': 10.0, 'cm': 31.831}    # soma geometry
+IzhCell['secs']['soma']['geom'] = {'diam': 10.0, 'L': 10.0, 'cm': 31.831}    # soma geometry, cm = 31.831
 IzhCell['secs']['soma']['pointps']['Izhi'] = {                               # soma Izhikevich properties
     'mod':'Izhi2007b',
     'C':1,
@@ -44,49 +55,66 @@ IzhCell['secs']['soma']['pointps']['Izhi'] = {                               # s
     'd':100,
     'celltype':1}
 IzhCell['secs']['soma']['threshold'] = -20
-netParams.cellParams['IzhCell'] = IzhCell                                   # add dict to list of cell parameters
+netParams.cellParams['IzhCell'] = IzhCell                                   # add dict to list of cell parameters                                  # add dict to list of cell parameters
 
-pop_labels = ['SGN', 'Int', 'IC', 'Fusi1', 'Fusi2']
+num_cells = 19
+pop_labels_nums = {'Int': num_cells,
+                'Fusi': num_cells,
+                'SGN': num_cells}
 
-for pop_label in pop_labels:
+for pop_label, pop_num in pop_labels_nums.items():
     netParams.popParams[f'{pop_label}_pop'] = {'cellType': 'IzhCell',
-                                               'numCells': 1}
+                                            'numCells': pop_num}
 
-### Input ###
-netParams.stimSourceParams['bkg'] = {'type': 'NetStim', 'rate': 100, 'noise': 0.5}
-netParams.stimTargetParams['bkg->ALL'] = {'source': 'bkg', 'conds': {'cellType': ['IzhCell']}, 'weight': 0.01, 'delay': 0, 'synMech': 'exc'}
-
-netParams.stimSourceParams['IClamp0'] = {'type': 'IClamp', 'del': 0, 'dur': sim_dur, 'amp': -0.1}
-netParams.stimTargetParams['IClamp->SGN'] = {'source': 'IClamp0', 'sec': 'soma', 'loc': 0.5, 'conds': {'pop': 'SGN_pop'}}
 
 ### Synapses ###
 netParams.synMechParams['exc'] = {'mod': 'ExpSyn', 'tau': 3, 'e': -10}
 netParams.synMechParams['inh'] = {'mod': 'ExpSyn', 'tau': 10, 'e': -70}
 
 ### Connections ###
-connections = [('SGN', 'Fusi1'), ('SGN', 'Fusi2'), 
-               ('Fusi1', 'IC'), ('IC', 'Fusi1'), ('Fusi2', 'IC'), ('IC', 'Fusi2'),
-               ('IC', 'Int'), ('Int', 'Fusi1'), ('Int', 'Fusi2')]
+i2f_conn_list = mh.define_int_conns(num_cells)
+pops_conn_list = [[i,i] for i in range(num_cells)]
 
-for pre, post in connections:
-    temp = 5
-    synMech = 'inh' if 'Int' in pre else 'exc'
+exc_gmax = 0.15
+inh_gmax = 0.003
 
-    netParams.connParams[f'{pre}->{post}'] = {
-        'preConds': {'pop': f'{pre}_pop'},
-        'postConds': {'pop': f'{post}_pop'},
-        'synsPerConn': 1,
-        'synMech': synMech,
-        'weight': 1
-    }
-
-netParams.connParams[f'input->SGN'] = {
-    'preConds': {'pop': 'input'},
-    'postConds': {'pop': 'SGN_pop'},
+netParams.connParams['SGN->Fusi'] = {
+    'preConds': {'pop': 'SGN_pop'},
+    'postConds': {'pop': 'Fusi_pop'},
     'synsPerConn': 1,
     'synMech': 'exc',
-    'weight': 1
+    'weight': exc_gmax,
+    'connList': pops_conn_list
 }
+
+netParams.connParams['Fusi->Int'] = {
+    'preConds': {'pop': 'Fusi_pop'},
+    'postConds': {'pop': 'Int_pop'},
+    'synsPerConn': 1,
+    'synMech': 'exc',
+    'weight': exc_gmax,
+    'connList': pops_conn_list
+}
+
+for scale, conns in i2f_conn_list.items():
+    netParams.connParams[f'Int{scale}->Fusi'] = {
+        'preConds': {'pop': 'Int_pop'},
+        'postConds': {'pop': 'Fusi_pop'},
+        'synsPerConn': 1,
+        'synMech': 'inh',
+        'weight': inh_gmax*scale,
+        'connList': conns
+    }
+
+### Input ###
+netParams.stimSourceParams['bkg'] = {'type': 'NetStim', 'rate': 100, 'noise': 1}
+netParams.stimTargetParams['bkg->ALL'] = {'source': 'bkg', 'conds': {'cellType': ['IzhCell']}, 'weight': 0.015, 'delay': 0, 'synMech': 'exc'}
+
+netParams.stimSourceParams['IClamp0'] = {'type': 'IClamp', 'del': 50, 'dur': sim_dur, 'amp': 0.95}
+netParams.stimTargetParams['IClamp->SGNmid'] = {'source': 'IClamp0', 'sec': 'soma', 'loc': 0.5, 'conds': {'pop': 'SGN_pop', 'cellList': [9]}}
+
+netParams.stimSourceParams['IClamp1'] = {'type': 'IClamp', 'del': 50, 'dur': sim_dur, 'amp': 0.65}
+netParams.stimTargetParams['IClamp->SGNside'] = {'source': 'IClamp1', 'sec': 'soma', 'loc': 0.5, 'conds': {'pop': 'SGN_pop', 'cellList': [8,10]}}
 
 ### Run simulation ###
 (pops, cells, conns, stims, simData) = sim.createSimulateAnalyze(netParams=netParams, simConfig=cfg, output=True)
@@ -94,48 +122,16 @@ netParams.connParams[f'input->SGN'] = {
 times = np.array(simData['spkt'])
 spikes = np.array(simData['spkid'])
 
-colors = {'SGN_pop': 'tab:green', 'Int_pop': 'tab:blue', 'IC_pop': 'tab:purple', 'Fusi1_pop': 'tab:red', 'Fusi2_pop': 'tab:red', 'input': 'tab:cyan'}
+colors = {'SGN_pop': 'tab:red', 'Int_pop': 'tab:green', 'Fusi_pop': 'tab:purple'}
+
+### Plot spike frequencies ###
+fusi_pop = pops['Fusi_pop']
+sgn_pop = pops['SGN_pop']
+int_pop = pops['Int_pop']
+mh.plot_spike_frequency(times, spikes, fusi_pop, 'Fusi_pop', sim_dir, colors)
+mh.plot_spike_frequency(times, spikes, sgn_pop, 'SGN_pop', sim_dir, colors)
+mh.plot_spike_frequency(times, spikes, int_pop, 'Int_pop', sim_dir, colors)
 
 ### Plot spike times ###
-fig, axs = plt.subplots(1, 1, figsize=(8,8))
+mh.plot_spike_times(num_cells, times, spikes, pops, sim_dir, colors)
 
-input_spike_t = []
-
-for pop_label, pop in pops.items():
-    for gid in pop.cellGids:
-        cell = cells[gid]
-        spike_times = times[np.where(spikes == gid)]
-        if gid == 0:
-            input_spike_t = spike_times
-
-        # loc = -1 if gid == 5 else gid
-        axs.vlines(spike_times, gid-0.25, gid+0.25, color=colors[pop_label], label=pop_label)
-
-        print(f'{pop_label}: {spike_times.shape[0]} spikes')
-
-axs.legend(loc='upper left', bbox_to_anchor=(1, 1))
-axs.set_ylabel('Cells (gid)')
-axs.set_xlabel('Time (ms)')
-fig.tight_layout()
-fig.savefig(os.path.join(cwd, 'output', 'spike_times.png'), dpi=300)
-
-### Plot voltage traces ###
-fig, axs = plt.subplots(5, 1, figsize=(8,13))
-axs.ravel()
-
-t = simData['t']
-
-for cell_id, v_soma in simData['V_soma'].items():
-    if 'dict' not in cell_id:
-        gid = int(cell_id.split('_')[1])
-        cell_pop = cells[gid].tags['pop']
-        axs[gid].plot(t, v_soma, label=cell_pop, color=colors[cell_pop])
-        axs[gid].set_title(f'{cell_pop}')
-    axs[gid].set_ylim([-75,45])
-    axs[gid].set_yticks([-60, -30, 0, 30])
-    axs[gid].set_ylabel('Voltage (mV)')
-
-axs[-1].set_xlabel('Time (ms)')
-
-fig.tight_layout()
-fig.savefig(os.path.join(cwd, 'output', 'voltage_traces.png'), dpi=300)

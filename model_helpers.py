@@ -1,3 +1,17 @@
+import os
+import matplotlib.pyplot as plt
+import numpy as np
+
+def get_output_dir(sim_label):
+
+    cwd = os.getcwd()
+    output_dir = os.path.join(cwd,'output')
+    sim_dir = os.path.join(output_dir,sim_label)
+
+    if not os.path.exists(sim_dir):
+        os.mkdir(sim_dir)
+
+    return sim_dir
 
 def define_int_conns(num_cells):
     int_conn_ids = {}
@@ -35,4 +49,56 @@ def define_int_conns(num_cells):
 
     return i2f_connList
 
+def plot_spike_frequency(times, spikes, pop, pop_label, sim_dir, colors):
 
+    fig, axs = plt.subplots(1, 1, figsize=(8,8))
+
+    for gid in pop.cellGids:
+        spike_times = times[np.where(spikes == gid)]
+        num_spikes = len(spike_times)
+        num_isi = num_spikes - 1 if num_spikes > 0 else 0
+
+        msf = num_isi / times[-1] * 1000
+        axs.plot(gid, msf, 'o', color=colors[pop_label])
+
+    axs.set_title(f'{pop_label} spike frequency')
+    axs.set_ylabel('Freuency (Hz)')
+    axs.set_ylim([-3,163])
+    axs.set_xticks(pop.cellGids)
+    axs.set_xticklabels(range(len(pop.cellGids)))
+    axs.set_xlabel('Fusi Cells (id)')
+    fig.tight_layout()
+    fig.savefig(os.path.join(sim_dir,f'{pop_label}-spike_frequency.png'), dpi=300)
+
+def plot_spike_times(num_cells, times, spikes, pops, sim_dir, colors):
+    fig, axs = plt.subplots(1, 1, figsize=(8,10))
+
+    tot_cells = 0
+    for pop_label, pop in pops.items():
+        for gid in pop.cellGids:
+            spike_times = times[np.where(spikes == gid)]
+
+            if gid%19 == 0:
+                add_label = True
+            else:
+                add_label = False
+
+            # loc = -1 if gid == 5 else gid
+            if add_label:
+                axs.vlines(spike_times, gid-0.25, gid+0.25, color=colors[pop_label], label=pop_label)
+            else:
+                axs.vlines(spike_times, gid-0.25, gid+0.25, color=colors[pop_label])  #, label=pop_label)
+
+            tot_cells += 1
+            # print(f'{pop_label}: {spike_times.shape[0]} spikes')
+
+    # axs.set_yticks(range(39))
+    # axs.set_yticklabels([0,0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18])
+
+    axs.legend(loc='upper left', bbox_to_anchor=(1, 1))
+    axs.set_yticks([i for i in range(tot_cells)])
+    axs.set_yticklabels([i for _ in range(len(pops)) for i in range(num_cells)])
+    axs.set_ylabel('Cells (gid)')
+    axs.set_xlabel('Time (ms)')
+    fig.tight_layout()
+    fig.savefig(os.path.join(sim_dir,'spike_times.png'), dpi=300)
