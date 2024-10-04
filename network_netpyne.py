@@ -16,8 +16,9 @@ load_mechanisms(mod_dir)
 
 # for inh_gmax in inh_gmaxs:
 #     inh_gmax = round(inh_gmax,3)
-    ### Simulation configuration ###
-sim_label = f'19_all_cells'
+### Simulation configuration ###
+num_cells = 200
+sim_label = f'{num_cells}_all_cells'
 sim_dir = mh.get_output_dir(sim_label)
 
 sim_dur = 500
@@ -30,7 +31,7 @@ cfg.recordTraces = {'V_soma': {'sec': 'soma', 'loc': 0.5, 'var': 'v'}}
 cfg.recordStep = 0.1
 # cfg.recordStim = True
 cfg.filename = os.path.join(sim_dir, f'{sim_label}-tinnitus_small-net') 	# Set file output name
-cfg.savePickle = True
+cfg.savePickle = False
 cfg.analysis['plotTraces'] = {'include': ['all'], 'saveFig': False, 'showFig': False}  # Plot recorded traces for this list of cells
 # cfg.analysis['plotSpikeFreq'] = {'include': ['all'], 'saveFig': True, 'showFig': True}
 cfg.hParams['celsius'] = 34.0 
@@ -57,7 +58,6 @@ IzhCell['secs']['soma']['pointps']['Izhi'] = {                               # s
 IzhCell['secs']['soma']['threshold'] = -20
 netParams.cellParams['IzhCell'] = IzhCell                                   # add dict to list of cell parameters                                  # add dict to list of cell parameters
 
-num_cells = 19
 pop_labels_nums = {'Int': num_cells,
                 'Fusi': num_cells,
                 'SGN': num_cells}
@@ -110,11 +110,15 @@ for scale, conns in i2f_conn_list.items():
 netParams.stimSourceParams['bkg'] = {'type': 'NetStim', 'rate': 100, 'noise': 1}
 netParams.stimTargetParams['bkg->ALL'] = {'source': 'bkg', 'conds': {'cellType': ['IzhCell']}, 'weight': 0.015, 'delay': 0, 'synMech': 'exc'}
 
+center_in = num_cells // 2
 netParams.stimSourceParams['IClamp0'] = {'type': 'IClamp', 'del': 50, 'dur': sim_dur, 'amp': 0.95}
-netParams.stimTargetParams['IClamp->SGNmid'] = {'source': 'IClamp0', 'sec': 'soma', 'loc': 0.5, 'conds': {'pop': 'SGN_pop', 'cellList': [9]}}
+netParams.stimTargetParams['IClamp->SGNmid'] = {'source': 'IClamp0', 'sec': 'soma', 'loc': 0.5, 'conds': {'pop': 'SGN_pop', 'cellList': [center_in]}}
 
 netParams.stimSourceParams['IClamp1'] = {'type': 'IClamp', 'del': 50, 'dur': sim_dur, 'amp': 0.65}
-netParams.stimTargetParams['IClamp->SGNside'] = {'source': 'IClamp1', 'sec': 'soma', 'loc': 0.5, 'conds': {'pop': 'SGN_pop', 'cellList': [8,10]}}
+netParams.stimTargetParams['IClamp->SGNside'] = {'source': 'IClamp1', 'sec': 'soma', 'loc': 0.5, 'conds': {'pop': 'SGN_pop', 'cellList': [center_in-1, center_in+1]}}
+
+# netParams.stimSourceParams['IClamp1'] = {'type': 'IClamp', 'del': 50, 'dur': sim_dur, 'amp': 0.35}
+# netParams.stimTargetParams['IClamp->SGNside'] = {'source': 'IClamp1', 'sec': 'soma', 'loc': 0.5, 'conds': {'pop': 'SGN_pop', 'cellList': [center_in-2, center_in+2]}}
 
 ### Run simulation ###
 (pops, cells, conns, stims, simData) = sim.createSimulateAnalyze(netParams=netParams, simConfig=cfg, output=True)

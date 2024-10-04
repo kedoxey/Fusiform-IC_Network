@@ -51,7 +51,7 @@ def define_int_conns(num_cells):
 
 def plot_spike_frequency(times, spikes, pop, pop_label, sim_dir, colors):
 
-    fig, axs = plt.subplots(1, 1, figsize=(8,8))
+    fig, axs = plt.subplots(1, 1, figsize=(30,8))
 
     for gid in pop.cellGids:
         spike_times = times[np.where(spikes == gid)]
@@ -64,21 +64,22 @@ def plot_spike_frequency(times, spikes, pop, pop_label, sim_dir, colors):
     axs.set_title(f'{pop_label} spike frequency')
     axs.set_ylabel('Freuency (Hz)')
     axs.set_ylim([-3,163])
+    axs.set_xlim([pop.cellGids[0]-2, pop.cellGids[-1]+2])
     axs.set_xticks(pop.cellGids)
-    axs.set_xticklabels(range(len(pop.cellGids)))
+    axs.set_xticklabels(range(len(pop.cellGids)), rotation=90)
     axs.set_xlabel('Fusi Cells (id)')
     fig.tight_layout()
     fig.savefig(os.path.join(sim_dir,f'{pop_label}-spike_frequency.png'), dpi=300)
 
 def plot_spike_times(num_cells, times, spikes, pops, sim_dir, colors):
-    fig, axs = plt.subplots(1, 1, figsize=(8,10))
+    fig, axs = plt.subplots(1, 1, figsize=(8,12))
 
     tot_cells = 0
     for pop_label, pop in pops.items():
         for gid in pop.cellGids:
             spike_times = times[np.where(spikes == gid)]
 
-            if gid%19 == 0:
+            if gid%num_cells == 0:
                 add_label = True
             else:
                 add_label = False
@@ -96,8 +97,12 @@ def plot_spike_times(num_cells, times, spikes, pops, sim_dir, colors):
     # axs.set_yticklabels([0,0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18])
 
     axs.legend(loc='upper left', bbox_to_anchor=(1, 1))
-    axs.set_yticks([i for i in range(tot_cells)])
-    axs.set_yticklabels([i for _ in range(len(pops)) for i in range(num_cells)])
+    yticks = [(100*i)-1 for i in range(7)]
+    yticks[0] = 0
+    axs.set_yticks(yticks)
+    axs.set_ylim([-2, tot_cells+2])
+    # axs.set_yticks([i for i in range(tot_cells)])
+    # axs.set_yticklabels([i for _ in range(len(pops)) for i in range(num_cells)])
     axs.set_ylabel('Cells (gid)')
     axs.set_xlabel('Time (ms)')
     fig.tight_layout()
