@@ -18,7 +18,7 @@ load_mechanisms(mod_dir)
 #     inh_gmax = round(inh_gmax,3)
 ### Simulation configuration ###
 num_cells = 200
-sim_label = f'{num_cells}_all_cells'
+sim_label = f'full-network'
 sim_dir = mh.get_output_dir(sim_label)
 
 sim_dur = 500
@@ -58,13 +58,14 @@ IzhCell['secs']['soma']['pointps']['Izhi'] = {                               # s
 IzhCell['secs']['soma']['threshold'] = -20
 netParams.cellParams['IzhCell'] = IzhCell                                   # add dict to list of cell parameters                                  # add dict to list of cell parameters
 
-pop_labels_nums = {'Int': num_cells,
-                'Fusi': num_cells,
-                'SGN': num_cells}
+pop_labels_nums = {'IC': num_cells,
+                   'Int': num_cells,
+                   'Fusi': num_cells,
+                   'SGN': num_cells}
 
 for pop_label, pop_num in pop_labels_nums.items():
     netParams.popParams[f'{pop_label}_pop'] = {'cellType': 'IzhCell',
-                                            'numCells': pop_num}
+                                               'numCells': pop_num}
 
 
 ### Synapses ###
@@ -73,9 +74,9 @@ netParams.synMechParams['inh'] = {'mod': 'ExpSyn', 'tau': 10, 'e': -70}
 
 ### Connections ###
 i2f_conn_list = mh.define_int_conns(num_cells)
-pops_conn_list = [[i,i] for i in range(num_cells)]
+recip_conn_list = [[i,i] for i in range(num_cells)]
 
-exc_gmax = 0.15
+exc_gmax = 0.075  # 0.15
 inh_gmax = 0.003
 
 netParams.connParams['SGN->Fusi'] = {
@@ -83,8 +84,8 @@ netParams.connParams['SGN->Fusi'] = {
     'postConds': {'pop': 'Fusi_pop'},
     'synsPerConn': 1,
     'synMech': 'exc',
-    'weight': exc_gmax,
-    'connList': pops_conn_list
+    'weight': exc_gmax*4,
+    'connList': recip_conn_list
 }
 
 netParams.connParams['Fusi->Int'] = {
@@ -93,7 +94,7 @@ netParams.connParams['Fusi->Int'] = {
     'synsPerConn': 1,
     'synMech': 'exc',
     'weight': exc_gmax,
-    'connList': pops_conn_list
+    'connList': recip_conn_list
 }
 
 for scale, conns in i2f_conn_list.items():
@@ -106,19 +107,48 @@ for scale, conns in i2f_conn_list.items():
         'connList': conns
     }
 
+netParams.connParams['Fusi->IC'] = {
+    'preConds': {'pop': 'Fusi_pop'},
+    'postConds': {'pop': 'IC_pop'},
+    'synsPerConn': 1,
+    'synMech': 'exc',
+    'weight': exc_gmax*2,
+    'connList': recip_conn_list
+}
+
+netParams.connParams['IC->Fusi'] = {
+    'preConds': {'pop': 'IC_pop'},
+    'postConds': {'pop': 'Fusi_pop'},
+    'synsPerConn': 1,
+    'synMech': 'exc',
+    'weight': exc_gmax*2,
+    'connList': recip_conn_list
+}
+
+netParams.connParams['IC->Int'] = {
+    'preConds': {'pop': 'IC_pop'},
+    'postConds': {'pop': 'Int_pop'},
+    'synsPerConn': 1,
+    'synMech': 'exc',
+    'weight': exc_gmax*2,
+    'connList': recip_conn_list
+}
+
 ### Input ###
 netParams.stimSourceParams['bkg'] = {'type': 'NetStim', 'rate': 100, 'noise': 1}
 netParams.stimTargetParams['bkg->ALL'] = {'source': 'bkg', 'conds': {'cellType': ['IzhCell']}, 'weight': 0.015, 'delay': 0, 'synMech': 'exc'}
 
 center_in = num_cells // 2
-netParams.stimSourceParams['IClamp0'] = {'type': 'IClamp', 'del': 50, 'dur': sim_dur, 'amp': 0.95}
+netParams.stimSourceParams['IClamp0'] = {'type': 'IClamp', 'del': 0, 'dur': sim_dur, 'amp': 0.95}
 netParams.stimTargetParams['IClamp->SGNmid'] = {'source': 'IClamp0', 'sec': 'soma', 'loc': 0.5, 'conds': {'pop': 'SGN_pop', 'cellList': [center_in]}}
 
-netParams.stimSourceParams['IClamp1'] = {'type': 'IClamp', 'del': 50, 'dur': sim_dur, 'amp': 0.65}
+netParams.stimSourceParams['IClamp1'] = {'type': 'IClamp', 'del': 0, 'dur': sim_dur, 'amp': 0.65}
 netParams.stimTargetParams['IClamp->SGNside'] = {'source': 'IClamp1', 'sec': 'soma', 'loc': 0.5, 'conds': {'pop': 'SGN_pop', 'cellList': [center_in-1, center_in+1]}}
 
-# netParams.stimSourceParams['IClamp1'] = {'type': 'IClamp', 'del': 50, 'dur': sim_dur, 'amp': 0.35}
-# netParams.stimTargetParams['IClamp->SGNside'] = {'source': 'IClamp1', 'sec': 'soma', 'loc': 0.5, 'conds': {'pop': 'SGN_pop', 'cellList': [center_in-2, center_in+2]}}
+num_sgn_high = 40
+sgn_high_ids = [i for i in range(num_cells-num_sgn_high-1,num_cells)]
+netParams.stimSourceParams['IClamp2'] = {'type': 'IClamp', 'del': 0, 'dur': sim_dur, 'amp': -0.65}
+netParams.stimTargetParams['IClamp->SGNhigh'] = {'source': 'IClamp2', 'sec': 'soma', 'loc': 0.5, 'conds': {'pop': 'SGN_pop', 'cellList': sgn_high_ids}}
 
 ### Run simulation ###
 (pops, cells, conns, stims, simData) = sim.createSimulateAnalyze(netParams=netParams, simConfig=cfg, output=True)
@@ -126,15 +156,17 @@ netParams.stimTargetParams['IClamp->SGNside'] = {'source': 'IClamp1', 'sec': 'so
 times = np.array(simData['spkt'])
 spikes = np.array(simData['spkid'])
 
-colors = {'SGN_pop': 'tab:red', 'Int_pop': 'tab:green', 'Fusi_pop': 'tab:purple'}
+colors = {'SGN_pop': 'tab:red', 'Int_pop': 'tab:green', 'Fusi_pop': 'tab:purple','IC_pop': 'tab:orange'}
 
 ### Plot spike frequencies ###
-fusi_pop = pops['Fusi_pop']
-sgn_pop = pops['SGN_pop']
-int_pop = pops['Int_pop']
-mh.plot_spike_frequency(times, spikes, fusi_pop, 'Fusi_pop', sim_dir, colors)
-mh.plot_spike_frequency(times, spikes, sgn_pop, 'SGN_pop', sim_dir, colors)
-mh.plot_spike_frequency(times, spikes, int_pop, 'Int_pop', sim_dir, colors)
+for pop_label, pop in pops.items():
+    mh.plot_spike_frequency(times,spikes,pop,pop_label,sim_dir,colors)
+# fusi_pop = pops['Fusi_pop']
+# sgn_pop = pops['SGN_pop']
+# int_pop = pops['Int_pop']
+# mh.plot_spike_frequency(times, spikes, fusi_pop, 'Fusi_pop', sim_dir, colors)
+# mh.plot_spike_frequency(times, spikes, sgn_pop, 'SGN_pop', sim_dir, colors)
+# mh.plot_spike_frequency(times, spikes, int_pop, 'Int_pop', sim_dir, colors)
 
 ### Plot spike times ###
 mh.plot_spike_times(num_cells, times, spikes, pops, sim_dir, colors)

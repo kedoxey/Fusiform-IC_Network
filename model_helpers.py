@@ -63,7 +63,7 @@ def plot_spike_frequency(times, spikes, pop, pop_label, sim_dir, colors):
 
     axs.set_title(f'{pop_label} spike frequency')
     axs.set_ylabel('Freuency (Hz)')
-    axs.set_ylim([-3,163])
+    axs.set_ylim([-3,200])
     axs.set_xlim([pop.cellGids[0]-2, pop.cellGids[-1]+2])
     axs.set_xticks(pop.cellGids)
     axs.set_xticklabels(range(len(pop.cellGids)), rotation=90)
