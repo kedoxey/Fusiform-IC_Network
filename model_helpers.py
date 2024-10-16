@@ -1,17 +1,59 @@
 import os
+import yaml
+import shutil
 import matplotlib.pyplot as plt
 import numpy as np
 
-def get_output_dir(sim_label):
+def get_output_dir(sim_name, sim_label):
 
     cwd = os.getcwd()
-    output_dir = os.path.join(cwd,'output')
-    sim_dir = os.path.join(output_dir,sim_label)
 
+    output_dir = os.path.join(cwd,'output')
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
+
+    sim_top_dir = os.path.join(output_dir, sim_name)
+    if not os.path.exists(sim_top_dir):
+        os.mkdir(sim_top_dir)
+
+    sim_dir = os.path.join(sim_top_dir, sim_label)
     if not os.path.exists(sim_dir):
         os.mkdir(sim_dir)
 
-    return sim_dir
+    return output_dir, sim_dir
+
+### For config file ###
+def join(loader,node):
+    seq = loader.construct_sequence(node)
+    return ''.join([str(i) for i in seq])
+
+def load_config(config_name='default_config'):
+    cwd = os.getcwd()
+    config_dir = os.path.join(cwd, 'config')
+    config_file = os.path.join(config_dir, config_name+'.yml')
+
+    yaml.add_constructor('!join', join)
+    with open(config_file) as f:
+        config_params = yaml.full_load(f)
+
+    # config_params['input_amp'] = config_params['input_amp']
+    
+    return config_params
+
+def write_config(config, sim_dir, sim_label, config_name='default_config'):
+    cwd = os.getcwd()
+
+    with open(os.path.join(sim_dir,'config-'+sim_label+'.yml'), 'w') as outfile:
+        yaml.dump(config, outfile)
+
+def save_config(sim_dir, sim_label, config_name='default_config'):
+    cwd = os.getcwd()
+    config_dir = os.path.join(cwd, 'config')
+    config_file = os.path.join(config_dir, config_name+'.yml')
+
+    shutil.copy2(config_file, os.path.join(sim_dir,'config-'+sim_label+'.yml'))
+    
+    print('Config saved!')
 
 def define_int_conns(num_cells):
     int_conn_ids = {}
@@ -49,7 +91,7 @@ def define_int_conns(num_cells):
 
     return i2f_connList
 
-def plot_spike_frequency(times, spikes, pop, pop_label, sim_dir, colors):
+def plot_spike_frequency(times, spikes, pop, pop_label, sim_dir, sim_label, colors):
 
     fig, axs = plt.subplots(1, 1, figsize=(30,8))
 
@@ -67,11 +109,11 @@ def plot_spike_frequency(times, spikes, pop, pop_label, sim_dir, colors):
     axs.set_xlim([pop.cellGids[0]-2, pop.cellGids[-1]+2])
     axs.set_xticks(pop.cellGids)
     axs.set_xticklabels(range(len(pop.cellGids)), rotation=90)
-    axs.set_xlabel('Fusi Cells (id)')
+    axs.set_xlabel('Cells (id)')
     fig.tight_layout()
-    fig.savefig(os.path.join(sim_dir,f'{pop_label}-spike_frequency.png'), dpi=300)
+    fig.savefig(os.path.join(sim_dir,f'{sim_label}-{pop_label}-spike_frequency.png'), dpi=300)
 
-def plot_spike_times(num_cells, times, spikes, pops, sim_dir, colors):
+def plot_spike_times(num_cells, times, spikes, pops, sim_dir, sim_label, colors):
     fig, axs = plt.subplots(1, 1, figsize=(8,12))
 
     tot_cells = 0
@@ -103,7 +145,10 @@ def plot_spike_times(num_cells, times, spikes, pops, sim_dir, colors):
     axs.set_ylim([-2, tot_cells+2])
     # axs.set_yticks([i for i in range(tot_cells)])
     # axs.set_yticklabels([i for _ in range(len(pops)) for i in range(num_cells)])
+    axs.set_xlim(0,1000)
     axs.set_ylabel('Cells (gid)')
     axs.set_xlabel('Time (ms)')
+
     fig.tight_layout()
-    fig.savefig(os.path.join(sim_dir,'spike_times.png'), dpi=300)
+
+    fig.savefig(os.path.join(sim_dir,f'{sim_label}-spike_times.png'), dpi=300)

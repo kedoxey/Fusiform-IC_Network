@@ -1,0 +1,11 @@
+!!python/object:argparse.Namespace
+enable_IC: false
+enable_loss: false
+exc_gmax: 0.075
+fusi_scale: 2
+ic_scale: 2
+in_amp: 0.95
+inh_gmax: 0.004
+num_cells: 200
+sgn_scale: 4
+sim_dur: 10000

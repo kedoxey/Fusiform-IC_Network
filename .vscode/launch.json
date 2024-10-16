@@ -1,0 +1,36 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "python": "/Users/katedoxey/miniconda3/bin/python"
+        },
+        {
+            "name": "network_netpyne.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "/Users/katedoxey/Desktop/research/projects/tinnitus model/code/tinnitus_model/network_netpyne.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "/Users/katedoxey/Desktop/research/projects/tinnitus model/code/tinnitus_model",
+            "python": "/Users/katedoxey/miniconda3/bin/python"
+        },
+        {
+            "name": "batch_network_netpyne.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "/Users/katedoxey/Desktop/research/projects/tinnitus model/code/tinnitus_model/batch_network_netpyne.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "/Users/katedoxey/Desktop/research/projects/tinnitus model/code/tinnitus_model",
+            "python": "/Users/katedoxey/miniconda3/bin/python"
+        }
+    ]
+}
