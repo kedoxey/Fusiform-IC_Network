@@ -1,0 +1,14 @@
+!!python/object:argparse.Namespace
+diam: 50
+enable_IC: true
+enable_loss: false
+exc_gmax: 0.07
+fusi_scale: 2
+ic_scale: 2
+in_amp: 0.95
+inh_gmax: 0.005
+inh_shift: 0
+num_cells: 200
+sgn_scale: 8
+sim_dur: 10000
+sim_name: match_neurosim

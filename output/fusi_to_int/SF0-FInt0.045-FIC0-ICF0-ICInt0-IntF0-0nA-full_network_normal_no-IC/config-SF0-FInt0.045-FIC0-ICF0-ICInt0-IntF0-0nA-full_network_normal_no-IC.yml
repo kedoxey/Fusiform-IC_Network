@@ -1,0 +1,16 @@
+!!python/object:argparse.Namespace
+bkg_rate: 16
+bkg_weight: 0.0152
+diam: 50
+enable_IC: false
+enable_loss: false
+fic_exc_gmax: 0
+fin_exc_gmax: 0.045
+icf_exc_gmax: 0
+icin_exc_gmax: 0
+in_amp: 0
+inf_inh_gmax: 0
+num_cells: 200
+sf_exc_gmax: 0
+sim_dur: 5000
+sim_name: fusi_to_int

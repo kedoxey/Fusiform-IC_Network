@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import os
+import yaml
 import numpy as np
 import model_helpers as mh
 import argparse as ap
@@ -21,19 +22,15 @@ def run_sim(config_name, *batch_params):
     for batch_param, batch_value in batch_params[0].items():
         setattr(params, batch_param, batch_value)
 
-    ## E/I Ratio ##
-    params.inh_gmax = round(params.exc_gmax/10 - params.inh_shift,3) if params.inh_shift > 0 else params.inh_gmax
-
-    sim_label = f'E{params.exc_gmax}-I{params.inh_gmax}-IC{params.ic_scale}xF{params.fusi_scale}xS{params.sgn_scale}_full-network'
+    sim_label = f'SF{params.sf_exc_gmax}-FInt{params.fin_exc_gmax}-FIC{params.fic_exc_gmax}-ICF{params.icf_exc_gmax}-ICInt{params.icin_exc_gmax}-IntF{params.inf_inh_gmax}-{params.in_amp}nA-full_network'
     sim_label += '_loss' if params.enable_loss else '_normal'
     if not params.enable_IC: sim_label += '_no-IC'
 
     output_dir, sim_dir = mh.get_output_dir(params.sim_name, sim_label)
     mh.write_config(params,sim_dir,sim_label,config_name)
 
-    sim_dur = 10000
-
-    cfg = specs.SimConfig()					                    # object of class' []''n of the simulation, in ms
+    cfg = specs.SimConfig()	
+    cfg.duration = params.sim_dur				                 
     cfg.dt = 0.05								                # Internal integration timestep to use
     cfg.verbose = True							                # Show detailed messages
     cfg.recordTraces = {'V_soma': {'sec': 'soma', 'loc': 0.5, 'var': 'v'}}
@@ -51,7 +48,7 @@ def run_sim(config_name, *batch_params):
 
     IzhCell = {'secs': {}}
     IzhCell['secs']['soma'] = {'geom': {}, 'pointps': {}}                        # soma params dict
-    IzhCell['secs']['soma']['geom'] = {'diam': 10.0, 'L': 10.0, 'cm': 31.831}    # soma geometry, cm = 31.831
+    IzhCell['secs']['soma']['geom'] = {'diam': params.diam, 'L': params.diam, 'cm': 1}    # soma geometry, cm = 31.831
     IzhCell['secs']['soma']['pointps']['Izhi'] = {                               # soma Izhikevich properties
         'mod':'Izhi2007b',
         'C':1,
@@ -91,7 +88,7 @@ def run_sim(config_name, *batch_params):
         'postConds': {'pop': 'Fusi_pop'},
         'synsPerConn': 1,
         'synMech': 'exc',
-        'weight': params.exc_gmax*params.sgn_scale,
+        'weight': params.sf_exc_gmax,
         'connList': recip_conn_list
     }
 
@@ -100,7 +97,7 @@ def run_sim(config_name, *batch_params):
         'postConds': {'pop': 'Int_pop'},
         'synsPerConn': 1,
         'synMech': 'exc',
-        'weight': params.exc_gmax,
+        'weight': params.fin_exc_gmax,
         'connList': recip_conn_list
     }
 
@@ -110,7 +107,7 @@ def run_sim(config_name, *batch_params):
             'postConds': {'pop': 'Fusi_pop'},
             'synsPerConn': 1,
             'synMech': 'inh',
-            'weight': params.inh_gmax*scale,
+            'weight': params.inf_inh_gmax*scale,
             'connList': conns
         }
 
@@ -119,7 +116,7 @@ def run_sim(config_name, *batch_params):
         'postConds': {'pop': 'IC_pop'},
         'synsPerConn': 1,
         'synMech': 'exc',
-        'weight': params.exc_gmax*params.fusi_scale,
+        'weight': params.fic_exc_gmax,
         'connList': recip_conn_list
     }
 
@@ -129,7 +126,7 @@ def run_sim(config_name, *batch_params):
             'postConds': {'pop': 'Fusi_pop'},
             'synsPerConn': 1,
             'synMech': 'exc',
-            'weight': params.exc_gmax*params.ic_scale,
+            'weight': params.icf_exc_gmax,
             'connList': recip_conn_list
         }
 
@@ -138,28 +135,29 @@ def run_sim(config_name, *batch_params):
             'postConds': {'pop': 'Int_pop'},
             'synsPerConn': 1,
             'synMech': 'exc',
-            'weight': params.exc_gmax*params.ic_scale,
+            'weight': params.icin_exc_gmax,
             'connList': recip_conn_list
         }
 
     ### Input ###
-    in_amp = 0.95
+    netParams.stimSourceParams['bkg'] = {'type': 'NetStim', 'rate': params.bkg_rate, 'noise': 1}
+    netParams.stimTargetParams['bkg->ALL'] = {'source': 'bkg', 'conds': {'cellType': ['IzhCell']}, 'weight': params.bkg_weight, 'delay': 0, 'synMech': 'exc'}
 
-    netParams.stimSourceParams['bkg'] = {'type': 'NetStim', 'rate': 100, 'noise': 1}
-    netParams.stimTargetParams['bkg->ALL'] = {'source': 'bkg', 'conds': {'cellType': ['IzhCell']}, 'weight': 0.015, 'delay': 0, 'synMech': 'exc'}
+    netParams.stimSourceParams['IClamp0'] = {'type': 'IClamp', 'del': 0, 'dur': params.sim_dur, 'amp': 0.1625}
+    netParams.stimTargetParams['IClamp->allSGN'] = {'source': 'IClamp0', 'sec': 'soma', 'loc': 0.5, 'conds': {'pop': 'SGN_pop'}}
 
     center_in = (params.num_cells // 2) - 20
-    netParams.stimSourceParams['IClamp0'] = {'type': 'IClamp', 'del': 0, 'dur': params.sim_dur, 'amp': params.in_amp}
-    netParams.stimTargetParams['IClamp->SGNmid'] = {'source': 'IClamp0', 'sec': 'soma', 'loc': 0.5, 'conds': {'pop': 'SGN_pop', 'cellList': [center_in]}}
+    netParams.stimSourceParams['IClamp1'] = {'type': 'IClamp', 'del': 0, 'dur': params.sim_dur, 'amp': params.in_amp}
+    netParams.stimTargetParams['IClamp->SGNmid'] = {'source': 'IClamp1', 'sec': 'soma', 'loc': 0.5, 'conds': {'pop': 'SGN_pop', 'cellList': [center_in]}}
 
-    netParams.stimSourceParams['IClamp1'] = {'type': 'IClamp', 'del': 0, 'dur': params.sim_dur, 'amp': params.in_amp-0.3}
-    netParams.stimTargetParams['IClamp->SGNside'] = {'source': 'IClamp1', 'sec': 'soma', 'loc': 0.5, 'conds': {'pop': 'SGN_pop', 'cellList': [center_in-1, center_in+1]}}
+    netParams.stimSourceParams['IClamp2'] = {'type': 'IClamp', 'del': 0, 'dur': params.sim_dur, 'amp': params.in_amp/2}  # -0.3}
+    netParams.stimTargetParams['IClamp->SGNside'] = {'source': 'IClamp2', 'sec': 'soma', 'loc': 0.5, 'conds': {'pop': 'SGN_pop', 'cellList': [center_in-1, center_in+1]}}
 
     num_sgn_high = 40
     sgn_high_ids = [i for i in range(params.num_cells-num_sgn_high-1,params.num_cells)]
     if params.enable_loss:
-        netParams.stimSourceParams['IClamp2'] = {'type': 'IClamp', 'del': 0, 'dur': params.sim_dur, 'amp': -(params.in_amp-0.3)}
-        netParams.stimTargetParams['IClamp->SGNhigh'] = {'source': 'IClamp2', 'sec': 'soma', 'loc': 0.5, 'conds': {'pop': 'SGN_pop', 'cellList': sgn_high_ids}}
+        netParams.stimSourceParams['IClamp3'] = {'type': 'IClamp', 'del': 0, 'dur': params.sim_dur, 'amp': -(params.in_amp/2)}  # -0.3)}
+        netParams.stimTargetParams['IClamp->SGNhigh'] = {'source': 'IClamp3', 'sec': 'soma', 'loc': 0.5, 'conds': {'pop': 'SGN_pop', 'cellList': sgn_high_ids}}
 
     ### Run simulation ###
     (pops, cells, conns, stims, simData) = sim.createSimulateAnalyze(netParams=netParams, simConfig=cfg, output=True)
@@ -170,9 +168,16 @@ def run_sim(config_name, *batch_params):
     colors = {'SGN_pop': 'tab:red', 'Int_pop': 'tab:green', 'Fusi_pop': 'tab:purple','IC_pop': 'tab:orange'}
 
     ### Plot spike frequencies ###
+    pop_msfs = {}
     for pop_label, pop in pops.items():
-        mh.plot_spike_frequency(times, spikes, pop, pop_label, sim_dir, sim_label, colors)
+        pop_msf = mh.plot_spike_frequency(times, spikes, pop, pop_label, sim_dir, sim_label, colors)
+        pop_msfs[pop_label] = float(pop_msf)
+
+    with open(os.path.join(sim_dir, f'{sim_label}-pop_msfs.yml'), 'w') as outfile:
+        yaml.dump(pop_msfs, outfile)
 
     ### Plot spike times ###
     mh.plot_spike_times(params.num_cells, times, spikes, pops, sim_dir, sim_label, colors)
+
+    return pop_msfs
 

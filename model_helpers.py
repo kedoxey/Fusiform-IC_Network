@@ -95,6 +95,8 @@ def plot_spike_frequency(times, spikes, pop, pop_label, sim_dir, sim_label, colo
 
     fig, axs = plt.subplots(1, 1, figsize=(30,8))
 
+    pop_msf = []
+
     for gid in pop.cellGids:
         spike_times = times[np.where(spikes == gid)]
         num_spikes = len(spike_times)
@@ -102,6 +104,10 @@ def plot_spike_frequency(times, spikes, pop, pop_label, sim_dir, sim_label, colo
 
         msf = num_isi / times[-1] * 1000
         axs.plot(gid, msf, 'o', color=colors[pop_label])
+
+        pop_msf.append(msf)
+
+    pop_msf = np.average(pop_msf)
 
     axs.set_title(f'{pop_label} spike frequency')
     axs.set_ylabel('Freuency (Hz)')
@@ -112,6 +118,8 @@ def plot_spike_frequency(times, spikes, pop, pop_label, sim_dir, sim_label, colo
     axs.set_xlabel('Cells (id)')
     fig.tight_layout()
     fig.savefig(os.path.join(sim_dir,f'{sim_label}-{pop_label}-spike_frequency.png'), dpi=300)
+
+    return pop_msf
 
 def plot_spike_times(num_cells, times, spikes, pops, sim_dir, sim_label, colors):
     fig, axs = plt.subplots(1, 1, figsize=(8,12))
