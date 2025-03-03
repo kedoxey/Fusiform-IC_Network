@@ -22,9 +22,9 @@ def run_sim(config_name, *batch_params):
     for batch_param, batch_value in batch_params[0].items():
         setattr(params, batch_param, batch_value)
 
-    sim_label = f'SF{params.sf_exc_gmax}-FInt{params.fin_exc_gmax}-FIC{params.fic_exc_gmax}-ICF{params.icf_exc_gmax}-ICInt{params.icin_exc_gmax}-IntF{params.inf_inh_gmax}-{params.in_amp}nA-full_network'
-    sim_label += '_loss' if params.enable_loss else '_normal'
-    if not params.enable_IC: sim_label += '_no-IC'
+    sim_label = f'{params.num_cells}cells-SF{params.sf_exc_gmax}-FInt{params.fin_exc_gmax}-FIC{params.fic_exc_gmax}-ICF{params.icf_exc_gmax}-ICInt{params.icin_exc_gmax}-IntF{params.inf_inh_gmax}-{params.in_amp}nA-full_network'
+    sim_label += '-loss' if params.enable_loss else '-normal'
+    if not params.enable_IC: sim_label += '-no_IC'
 
     output_dir, sim_dir = mh.get_output_dir(params.sim_name, sim_label)
     mh.write_config(params,sim_dir,sim_label,config_name)
@@ -32,12 +32,13 @@ def run_sim(config_name, *batch_params):
     cfg = specs.SimConfig()	
     cfg.duration = params.sim_dur				                 
     cfg.dt = 0.05								                # Internal integration timestep to use
-    cfg.verbose = True							                # Show detailed messages
+    cfg.verbose = True	
+    cfg.recordCells = ['Fusi_pop']						                # Show detailed messages
     cfg.recordTraces = {'V_soma': {'sec': 'soma', 'loc': 0.5, 'var': 'v'}}
     cfg.recordStep = 0.1
     # cfg.recordStim = True
-    cfg.filename = os.path.join(sim_dir, f'{sim_label}-tinnitus_small-net') 	# Set file output name
-    cfg.savePickle = False
+    cfg.filename = os.path.join(sim_dir, f'{sim_label}-tinnitus_small_net') 	# Set file output name
+    cfg.savePickle = params.save_data
     # cfg.analysis['plotTraces'] = {'include': ['all'], 'saveFig': False, 'showFig': False}  # Plot recorded traces for this list of cells
     # cfg.analysis['plotSpikeFreq'] = {'include': ['all'], 'saveFig': True, 'showFig': True}
     cfg.hParams['celsius'] = 34.0 
