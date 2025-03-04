@@ -1,4 +1,4 @@
-import network_netpyne
+from simulate_network import run_sim
 import numpy as np
 from sklearn.model_selection import ParameterGrid
 
@@ -9,7 +9,7 @@ paramGrid = {'sim_name': ['fully_connected-data'],
              'sf_exc_gmax': [0.19],
              'fin_exc_gmax': [0.016],
              'fic_exc_gmax': [0.05],
-             'icf_exc_gmax': [0.07],
+             'icf_exc_gmax': [0.05],
              'icin_exc_gmax': [0.05],
              'inf_inh_gmax': [0.0045],
              'enable_loss': [True, False],
@@ -19,7 +19,7 @@ batchParamsList = list(ParameterGrid(paramGrid))
 
 thresh_params = []
 for batchParams in batchParamsList:
-    pop_msfs = network_netpyne.run_sim(config_name, batchParams)
+    pop_msfs = run_sim(config_name, batchParams)
 
     if pop_msfs['Fusi_pop'] > 70:
         thresh_params.append(batchParams['sf_exc_gmax'])
